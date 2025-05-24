@@ -39,7 +39,11 @@ class ExpenseController extends BaseController
         $expenses = $this->expenseService->list($user, $year, $month, $page, $pageSize);
         $totalCount = $this->expenseService->count($user, $year, $month);
         $years = $this->expenseService->listYears($user);
-
+        $months = [
+            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+        ];
         return $this->render($response, 'expenses/index.twig', [
             'expenses' => $expenses,
             'page' => $page,
@@ -47,32 +51,105 @@ class ExpenseController extends BaseController
             'total' => $totalCount,
             'year' => $year,
             'month' => $month,
-            'availableYears' => $years
+            'availableYears' => $years,
+            'months' => $months
         ]);
     }
 
-
     public function create(Request $request, Response $response): Response
     {
-        // TODO: implement this action method to display the create expense page
+        $userId = $this->getLoggedInUserId();
+        if (!$userId) {
+            return $response->withHeader('Location', '/login')->withStatus(302);
+        }
 
-        // Hints:
-        // - obtain the list of available categories from configuration and pass to the view
+        $categories = ['food', 'transport', 'housing', 'utilities', 'entertainment', 'other'];
 
-        return $this->render($response, 'expenses/create.twig', ['categories' => []]);
+        $queryParams = $request->getQueryParams();
+        $values = [
+            'date' => $queryParams['date'] ?? date('Y-m-d'),
+            'category' => $queryParams['category'] ?? '',
+            'amount' => $queryParams['amount'] ?? '',
+            'description' => $queryParams['description'] ?? '',
+        ];
+
+        $errors = $queryParams['errors'] ?? [];
+
+        return $this->render($response, 'expenses/create.twig', [
+            'categories' => $categories,
+            'values' => $values,
+            'errors' => $errors,
+        ]);
     }
 
     public function store(Request $request, Response $response): Response
     {
-        // TODO: implement this action method to create a new expense
+        $userId = $this->getLoggedInUserId();
+        if (!$userId) {
+            return $response->withHeader('Location', '/login')->withStatus(302);
+        }
 
-        // Hints:
-        // - use the session to get the current user ID
-        // - use the expense service to create and persist the expense entity
-        // - rerender the "expenses.create" page with included errors in case of failure
-        // - redirect to the "expenses.index" page in case of success
+        $postData = (array)$request->getParsedBody();
 
-        return $response;
+        $date = trim($postData['date'] ?? '');
+        $category = trim($postData['category'] ?? '');
+        $amount = trim($postData['amount'] ?? '');
+        $description = trim($postData['description'] ?? '');
+
+        $errors = [];
+
+        if (!$date || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || strtotime($date) > strtotime(date('Y-m-d'))) {
+            $errors['date'] = 'Date must be today or earlier.';
+        }
+
+        $categories = ['food', 'transport', 'housing', 'utilities', 'entertainment', 'other'];
+        if (!$category || !in_array($category, $categories, true)) {
+            $errors['category'] = 'Please select a valid category.';
+        }
+
+        if (!is_numeric($amount) || (float)$amount <= 0) {
+            $errors['amount'] = 'Amount must be a positive number.';
+        }
+
+        if (!$description) {
+            $errors['description'] = 'Description cannot be empty.';
+        }
+
+        if ($errors) {
+            $query = http_build_query([
+                'date' => $date,
+                'category' => $category,
+                'amount' => $amount,
+                'description' => $description,
+                'errors' => json_encode($errors),
+            ]);
+            return $response
+                ->withHeader('Location', '/expenses/create?' . $query)
+                ->withStatus(302);
+        }
+
+        try {
+            $user = new \App\Domain\Entity\User($userId, '', '', new \DateTimeImmutable());
+            $this->expenseService->create(
+                $user,
+                (float)$amount,
+                $description,
+                new \DateTimeImmutable($date),
+                $category
+            );
+        } catch (\Throwable $e) {
+            $query = http_build_query([
+                'date' => $date,
+                'category' => $category,
+                'amount' => $amount,
+                'description' => $description,
+                'errors' => json_encode(['general' => 'Failed to save expense. Please try again.']),
+            ]);
+            return $response
+                ->withHeader('Location', '/expenses/create?' . $query)
+                ->withStatus(302);
+        }
+        return $response->withHeader('Location', '/expenses')->withStatus(302);
     }
 
     public function edit(Request $request, Response $response, array $routeParams): Response

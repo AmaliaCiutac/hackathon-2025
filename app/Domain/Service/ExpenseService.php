@@ -44,18 +44,41 @@ class ExpenseService
         return $this->expenses->listExpenditureYears($user);
     }
 
-
     public function create(
         User $user,
         float $amount,
         string $description,
-        DateTimeImmutable $date,
+        \DateTimeImmutable $date,
         string $category,
     ): void {
-        // TODO: implement this to create a new expense entity, perform validation, and persist
 
-        // TODO: here is a code sample to start with
-        $expense = new Expense(null, $user->id, $date, $category, (int)$amount, $description);
+        if ($date > new \DateTimeImmutable('today')) {
+            throw new \InvalidArgumentException('Date cannot be in the future.');
+        }
+
+        $categories = ['food', 'transport', 'housing', 'utilities', 'entertainment', 'other'];
+        if (!in_array($category, $categories, true)) {
+            throw new \InvalidArgumentException('Invalid category.');
+        }
+
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException('Amount must be positive.');
+        }
+
+        if (trim($description) === '') {
+            throw new \InvalidArgumentException('Description cannot be empty.');
+        }
+        $amountCents = (int)round($amount * 100);
+
+        $expense = new Expense(
+            null,
+            $user->id,
+            $date,
+            $category,
+            $amountCents,
+            $description
+        );
+
         $this->expenses->save($expense);
     }
 

@@ -23,18 +23,5 @@ abstract class BaseController
         return $_SESSION['user_id'] ?? null;
     }
 
-
-    protected function requireAuth(): void
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (!isset($_SESSION['user_id'])) {
-            header('Location: /login');
-            exit;
-        }
-    }
-
     // TODO: add here any common controller logic and use in concrete controllers
 }
