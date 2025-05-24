@@ -18,9 +18,32 @@ class ExpenseService
 
     public function list(User $user, int $year, int $month, int $pageNumber, int $pageSize): array
     {
-        // TODO: implement this and call from controller to obtain paginated list of expenses
-        return [];
+        $criteria = [
+            'user_id' => $user->id,
+            'year' => $year,
+            'month' => $month
+        ];
+
+        $offset = ($pageNumber - 1) * $pageSize;
+        return $this->expenses->findBy($criteria, $offset, $pageSize);
     }
+
+    public function count(User $user, int $year, int $month): int
+    {
+        $criteria = [
+            'user_id' => $user->id,
+            'year' => $year,
+            'month' => $month
+        ];
+
+        return $this->expenses->countBy($criteria);
+    }
+
+    public function listYears(User $user): array
+    {
+        return $this->expenses->listExpenditureYears($user);
+    }
+
 
     public function create(
         User $user,

@@ -46,21 +46,41 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
 
     public function findBy(array $criteria, int $from, int $limit): array
     {
-        // TODO: Implement findBy() method.
-        return [];
-    }
+        $sql = 'SELECT * FROM expenses WHERE user_id = :user_id AND strftime(\'%Y\', date) = :year AND strftime(\'%m\', date) = :month ORDER BY date DESC LIMIT :limit OFFSET :from';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':user_id', $criteria['user_id'], PDO::PARAM_INT);
+        $stmt->bindValue(':year', (string)$criteria['year'], PDO::PARAM_STR);
+        $stmt->bindValue(':month', str_pad((string)$criteria['month'], 2, '0', STR_PAD_LEFT), PDO::PARAM_STR);
+        $stmt->bindValue(':from', $from, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
 
+        $results = [];
+        while ($row = $stmt->fetch()) {
+            $results[] = $this->createExpenseFromData($row);
+        }
+
+        return $results;
+    }
 
     public function countBy(array $criteria): int
     {
-        // TODO: Implement countBy() method.
-        return 0;
+        $sql = 'SELECT COUNT(*) FROM expenses WHERE user_id = :user_id AND strftime(\'%Y\', date) = :year AND strftime(\'%m\', date) = :month';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'user_id' => $criteria['user_id'],
+            'year' => (string)$criteria['year'],
+            'month' => str_pad((string)$criteria['month'], 2, '0', STR_PAD_LEFT)
+        ]);
+        return (int)$stmt->fetchColumn();
     }
 
     public function listExpenditureYears(User $user): array
     {
-        // TODO: Implement listExpenditureYears() method.
-        return [];
+        $sql = 'SELECT DISTINCT strftime(\'%Y\', date) as year FROM expenses WHERE user_id = :user_id ORDER BY year DESC';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['user_id' => $user->id]);
+        return array_map(fn($row) => (int)$row['year'], $stmt->fetchAll());
     }
 
     public function sumAmountsByCategory(array $criteria): array
@@ -95,4 +115,5 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
             $data['description'],
         );
     }
+
 }

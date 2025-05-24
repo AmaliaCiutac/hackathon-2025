@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+session_start();
+
 // initializing class autoloader
 require __DIR__.'/../vendor/autoload.php';
 

@@ -22,26 +22,35 @@ class ExpenseController extends BaseController
 
     public function index(Request $request, Response $response): Response
     {
-        // TODO: implement this action method to display the expenses page
+        $userId = $this->getLoggedInUserId();
+        if (!$userId) {
+            return $response->withHeader('Location', '/login')->withStatus(302);
+        }
 
-        // Hints:
-        // - use the session to get the current user ID
-        // - use the request query parameters to determine the page number and page size
-        // - use the expense service to fetch expenses for the current user
+        $query = $request->getQueryParams();
+        $page = max((int)($query['page'] ?? 1), 1);
+        $pageSize = self::PAGE_SIZE;
 
-        // parse request parameters
-        $userId = 1; // TODO: obtain logged-in user ID from session
-        $page = (int)($request->getQueryParams()['page'] ?? 1);
-        $pageSize = (int)($request->getQueryParams()['pageSize'] ?? self::PAGE_SIZE);
+        $year = (int)($query['year'] ?? date('Y'));
+        $month = (int)($query['month'] ?? date('n'));
 
-        $expenses = $this->expenseService->list($userId, $page, $pageSize);
+        $user = new \App\Domain\Entity\User($userId, '', '', new \DateTimeImmutable());
+
+        $expenses = $this->expenseService->list($user, $year, $month, $page, $pageSize);
+        $totalCount = $this->expenseService->count($user, $year, $month);
+        $years = $this->expenseService->listYears($user);
 
         return $this->render($response, 'expenses/index.twig', [
             'expenses' => $expenses,
-            'page'     => $page,
+            'page' => $page,
             'pageSize' => $pageSize,
+            'total' => $totalCount,
+            'year' => $year,
+            'month' => $month,
+            'availableYears' => $years
         ]);
     }
+
 
     public function create(Request $request, Response $response): Response
     {

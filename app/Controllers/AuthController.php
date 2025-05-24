@@ -91,7 +91,6 @@ class AuthController extends BaseController
                 'username' => $username
             ]);
         }
-
         $this->logger->info("User logged in: $username");
         return $response->withHeader('Location', '/')->withStatus(302);
     }
