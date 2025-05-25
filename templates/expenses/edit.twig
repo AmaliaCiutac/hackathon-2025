@@ -3,39 +3,61 @@
 {% block content %}
     <h1 class="text-2xl font-bold mb-4">Edit Expense</h1>
     <section class="mb-8">
-        {# TODO: customize the form below as needed, make sure to populate with edited expense values #}
         <form action="/expenses/{{ expense.id }}" method="POST" class="max-w-sm mx-auto">
+            <input type="hidden" name="_METHOD" value="PUT">
+
+            {% if errors.general %}
+                <div class="mb-4 p-2 bg-red-800 text-white rounded">
+                    {{ errors.general }}
+                </div>
+            {% endif %}
+
             <div class="mb-4 flex items-center">
                 <label for="date" class="w-24 text-gray-300 font-bold">Date:</label>
                 <input type="date" id="date" name="date" required
+                       value="{{ request.query.date ?? expense.date|date('Y-m-d') }}"
                        class="flex-1 shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-100 leading-tight focus:outline-none focus:shadow-outline">
+                {% if errors.date %}
+                    <span class="ml-2 text-red-500">{{ errors.date }}</span>
+                {% endif %}
             </div>
             <div class="mb-4 flex items-center">
                 <label for="category" class="w-24 text-gray-300 font-bold">Category:</label>
-                {# TODO: populate with configured expense categories instead of the mock values #}
                 <select id="category" name="category" required
                         class="flex-1 shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-100 leading-tight focus:outline-none focus:shadow-outline">
                     <option value="">Select a category</option>
-                    <option value="groceries">Groceries</option>
-                    <option value="utilities">Utilities</option>
-                    <option value="transport">Transport</option>
-                    <option value="entertainment">Entertainment</option>
-                    <option value="housing">Housing</option>
-                    <option value="health">Healthcare</option>
-                    <option value="other">Other</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}"
+                                {% if (request.query.category ?? expense.category) == cat %}selected{% endif %}>
+                            {{ cat|capitalize }}
+                        </option>
+                    {% endfor %}
                 </select>
+                {% if errors.category %}
+                    <span class="ml-2 text-red-500">{{ errors.category }}</span>
+                {% endif %}
             </div>
             <div class="mb-4 flex items-center">
                 <label for="amount" class="w-24 text-gray-300 font-bold">Amount:</label>
                 <input type="number" id="amount" name="amount" step="0.01" required
+                       value="{{ request.query.amount ?? (expense.amountCents / 100) }}"
                        class="flex-1 shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-100 leading-tight focus:outline-none focus:shadow-outline">
+                {% if errors.amount %}
+                    <span class="ml-2 text-red-500">{{ errors.amount }}</span>
+                {% endif %}
             </div>
             <div class="mb-6 flex items-start">
                 <label for="description" class="w-24 text-gray-300 font-bold mt-2">Description:</label>
                 <textarea id="description" name="description" rows="2"
-                          class="flex-1 shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-100 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                          class="flex-1 shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-100 leading-tight focus:outline-none focus:shadow-outline">{{ request.query.description ?? expense.description }}</textarea>
+                {% if errors.description %}
+                    <span class="ml-2 text-red-500">{{ errors.description }}</span>
+                {% endif %}
             </div>
-            <div class="flex justify-end">
+            <div class="flex justify-end gap-2">
+                <a href="/expenses" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Cancel
+                </a>
                 <button type="submit"
                         class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                     Update

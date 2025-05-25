@@ -22,110 +22,91 @@ class ExpenseController extends BaseController
 
     public function index(Request $request, Response $response): Response
     {
+        // Check if user is logged in
         $userId = $this->getLoggedInUserId();
         if (!$userId) {
             return $response->withHeader('Location', '/login')->withStatus(302);
         }
 
         $query = $request->getQueryParams();
-        $page = max((int)($query['page'] ?? 1), 1);
-        $pageSize = self::PAGE_SIZE;
-
-        $year = (int)($query['year'] ?? date('Y'));
-        $month = (int)($query['month'] ?? date('n'));
+        $page = max((int)($query['page'] ?? 1), 1);  // Ensure page is at least 1
+        $currentYear = (int)($query['year'] ?? date('Y'));
+        $currentMonth = (int)($query['month'] ?? date('n'));
 
         $user = new \App\Domain\Entity\User($userId, '', '', new \DateTimeImmutable());
 
-        $expenses = $this->expenseService->list($user, $year, $month, $page, $pageSize);
-        $totalCount = $this->expenseService->count($user, $year, $month);
-        $years = $this->expenseService->listYears($user);
+        $expenses = $this->expenseService->list($user, $currentYear, $currentMonth, $page, self::PAGE_SIZE);
+        $totalExpenses = $this->expenseService->count($user, $currentYear, $currentMonth);
+        $availableYears = $this->expenseService->listYears($user);
+
         $months = [
             1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
             5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
             9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
         ];
+
+
         return $this->render($response, 'expenses/index.twig', [
             'expenses' => $expenses,
             'page' => $page,
-            'pageSize' => $pageSize,
-            'total' => $totalCount,
-            'year' => $year,
-            'month' => $month,
-            'availableYears' => $years,
+            'pageSize' => self::PAGE_SIZE,
+            'total' => $totalExpenses,
+            'year' => $currentYear,
+            'month' => $currentMonth,
+            'availableYears' => $availableYears,
             'months' => $months
         ]);
     }
 
     public function create(Request $request, Response $response): Response
     {
-        $userId = $this->getLoggedInUserId();
-        if (!$userId) {
+        if (!$userId = $this->getLoggedInUserId()) {
             return $response->withHeader('Location', '/login')->withStatus(302);
         }
 
-        $categories = ['food', 'transport', 'housing', 'utilities', 'entertainment', 'other'];
-
-        $queryParams = $request->getQueryParams();
-        $values = [
-            'date' => $queryParams['date'] ?? date('Y-m-d'),
-            'category' => $queryParams['category'] ?? '',
-            'amount' => $queryParams['amount'] ?? '',
-            'description' => $queryParams['description'] ?? '',
+        $categories = [
+            'food',
+            'transport',
+            'housing',
+            'utilities',
+            'entertainment',
+            'other'
+        ];
+        $defaultValues = [
+            'date' => date('Y-m-d'),
+            'category' => '',
+            'amount' => '',
+            'description' => ''
         ];
 
-        $errors = $queryParams['errors'] ?? [];
+        $formValues = array_merge($defaultValues, $request->getQueryParams());
+
+        $errors = $request->getQueryParams()['errors'] ?? [];
 
         return $this->render($response, 'expenses/create.twig', [
             'categories' => $categories,
-            'values' => $values,
-            'errors' => $errors,
+            'values' => $formValues,
+            'errors' => $errors
         ]);
     }
 
     public function store(Request $request, Response $response): Response
     {
-        $userId = $this->getLoggedInUserId();
-        if (!$userId) {
+        if (!$userId = $this->getLoggedInUserId()) {
             return $response->withHeader('Location', '/login')->withStatus(302);
         }
 
-        $postData = (array)$request->getParsedBody();
+        $data = $request->getParsedBody() ?? [];
+        $date = trim($data['date'] ?? '');
+        $category = trim($data['category'] ?? '');
+        $amount = trim($data['amount'] ?? '');
+        $description = trim($data['description'] ?? '');
 
-        $date = trim($postData['date'] ?? '');
-        $category = trim($postData['category'] ?? '');
-        $amount = trim($postData['amount'] ?? '');
-        $description = trim($postData['description'] ?? '');
 
-        $errors = [];
+        $errors = $this->validateExpenseData($date, $category, $amount, $description);
 
-        if (!$date || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || strtotime($date) > strtotime(date('Y-m-d'))) {
-            $errors['date'] = 'Date must be today or earlier.';
-        }
-
-        $categories = ['food', 'transport', 'housing', 'utilities', 'entertainment', 'other'];
-        if (!$category || !in_array($category, $categories, true)) {
-            $errors['category'] = 'Please select a valid category.';
-        }
-
-        if (!is_numeric($amount) || (float)$amount <= 0) {
-            $errors['amount'] = 'Amount must be a positive number.';
-        }
-
-        if (!$description) {
-            $errors['description'] = 'Description cannot be empty.';
-        }
-
-        if ($errors) {
-            $query = http_build_query([
-                'date' => $date,
-                'category' => $category,
-                'amount' => $amount,
-                'description' => $description,
-                'errors' => json_encode($errors),
-            ]);
-            return $response
-                ->withHeader('Location', '/expenses/create?' . $query)
-                ->withStatus(302);
+        if (!empty($errors)) {
+            return $this->redirectBackWithErrors($response, $date, $category, $amount, $description, $errors);
         }
 
         try {
@@ -138,58 +119,192 @@ class ExpenseController extends BaseController
                 $category
             );
         } catch (\Throwable $e) {
-            $query = http_build_query([
-                'date' => $date,
-                'category' => $category,
-                'amount' => $amount,
-                'description' => $description,
-                'errors' => json_encode(['general' => 'Failed to save expense. Please try again.']),
-            ]);
-            return $response
-                ->withHeader('Location', '/expenses/create?' . $query)
-                ->withStatus(302);
+            $errors = ['general' => 'Failed to save expense. Please try again.'];
+            return $this->redirectBackWithErrors($response, $date, $category, $amount, $description, $errors);
         }
+
         return $response->withHeader('Location', '/expenses')->withStatus(302);
+    }
+
+    private function validateExpenseData(string $date, string $category, string $amount, string $description): array
+    {
+        $errors = [];
+        $validCategories = ['food', 'transport', 'housing', 'utilities', 'entertainment', 'other'];
+
+        if (empty($date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            $errors['date'] = 'Invalid date format. Use YYYY-MM-DD.';
+        } elseif (strtotime($date) > time()) {
+            $errors['date'] = 'Date cannot be in the future.';
+        }
+
+        if (empty($category) || !in_array($category, $validCategories, true)) {
+            $errors['category'] = 'Please select a valid category.';
+        }
+
+        if (!is_numeric($amount) || (float)$amount <= 0) {
+            $errors['amount'] = 'Amount must be a positive number.';
+        }
+
+        if (empty($description)) {
+            $errors['description'] = 'Description cannot be empty.';
+        }
+
+        return $errors;
+    }
+
+    private function redirectBackWithErrors(
+        Response $response,
+        string $date,
+        string $category,
+        string $amount,
+        string $description,
+        array $errors
+    ): Response {
+        $query = http_build_query([
+            'date' => $date,
+            'category' => $category,
+            'amount' => $amount,
+            'description' => $description,
+            'errors' => json_encode($errors)
+        ]);
+
+        return $response
+            ->withHeader('Location', '/expenses/create?' . $query)
+            ->withStatus(302);
     }
 
     public function edit(Request $request, Response $response, array $routeParams): Response
     {
-        // TODO: implement this action method to display the edit expense page
 
-        // Hints:
-        // - obtain the list of available categories from configuration and pass to the view
-        // - load the expense to be edited by its ID (use route params to get it)
-        // - check that the logged-in user is the owner of the edited expense, and fail with 403 if not
+        $userId = $this->getLoggedInUserId();
+        if (!$userId) {
+            return $response->withHeader('Location', '/login')->withStatus(302);
+        }
 
-        $expense = ['id' => 1];
+        $expenseId = (int)($routeParams['id'] ?? 0);
+        if ($expenseId <= 0) {
+            return $response->withStatus(404);
+        }
+        $expense = $this->expenseService->find($expenseId);
+        if (!$expense) {
+            return $response->withStatus(404);
+        }
 
-        return $this->render($response, 'expenses/edit.twig', ['expense' => $expense, 'categories' => []]);
+        if ($expense->userId !== $userId) {
+            return $response->withStatus(403);
+        }
+
+        $categories = [
+            'food',
+            'transport',
+            'housing',
+            'utilities',
+            'entertainment',
+            'other'
+        ];
+
+        return $this->render($response, 'expenses/edit.twig', [
+            'expense' => $expense,
+            'categories' => $categories,
+            'errors' => $request->getQueryParams()['errors'] ?? []
+        ]);
     }
 
     public function update(Request $request, Response $response, array $routeParams): Response
     {
-        // TODO: implement this action method to update an existing expense
 
-        // Hints:
-        // - load the expense to be edited by its ID (use route params to get it)
-        // - check that the logged-in user is the owner of the edited expense, and fail with 403 if not
-        // - get the new values from the request and prepare for update
-        // - update the expense entity with the new values
-        // - rerender the "expenses.edit" page with included errors in case of failure
-        // - redirect to the "expenses.index" page in case of success
+        $userId = $this->getLoggedInUserId();
+        if (!$userId) {
+            return $response->withHeader('Location', '/login')->withStatus(302);
+        }
 
-        return $response;
+        $expenseId = (int)($routeParams['id'] ?? 0);
+        if ($expenseId <= 0) {
+            return $response->withStatus(404);
+        }
+        $expense = $this->expenseService->find($expenseId);
+        if (!$expense) {
+            return $response->withStatus(404);
+        }
+
+
+        if ($expense->userId !== $userId) {
+            return $response->withStatus(403);
+        }
+
+
+        $data = $request->getParsedBody() ?? [];
+        $date = trim($data['date'] ?? '');
+        $category = trim($data['category'] ?? '');
+        $amount = trim($data['amount'] ?? '');
+        $description = trim($data['description'] ?? '');
+
+
+        $errors = $this->validateExpenseData($date, $category, $amount, $description);
+
+        if (!empty($errors)) {
+            $query = http_build_query([
+                'errors' => json_encode($errors),
+                'date' => $date,
+                'category' => $category,
+                'amount' => $amount,
+                'description' => $description
+            ]);
+            return $response
+                ->withHeader('Location', '/expenses/' . $expenseId . '/edit?' . $query)
+                ->withStatus(302);
+        }
+
+        try {
+            $this->expenseService->update(
+                $expense,
+                (float)$amount,
+                $description,
+                new \DateTimeImmutable($date),
+                $category
+            );
+
+            return $response->withHeader('Location', '/expenses')->withStatus(302);
+        } catch (\Throwable $e) {
+            $errors = ['general' => 'Failed to update expense. Please try again.'];
+            $query = http_build_query(['errors' => json_encode($errors)]);
+            return $response
+                ->withHeader('Location', '/expenses/' . $expenseId . '/edit?' . $query)
+                ->withStatus(302);
+        }
     }
 
     public function destroy(Request $request, Response $response, array $routeParams): Response
     {
-        // TODO: implement this action method to delete an existing expense
+        $userId = $this->getLoggedInUserId();
 
-        // - load the expense to be edited by its ID (use route params to get it)
-        // - check that the logged-in user is the owner of the edited expense, and fail with 403 if not
-        // - call the repository method to delete the expense
-        // - redirect to the "expenses.index" page
+        if (!$userId) {
+            return $response->withHeader('Location', '/login')->withStatus(302);
+        }
 
-        return $response;
+        $expenseId = (int)($routeParams['id'] ?? 0);
+        if ($expenseId <= 0) {
+            return $response->withStatus(404);
+        }
+
+        $expense = $this->expenseService->find($expenseId);
+        if (!$expense) {
+            return $response->withStatus(404);
+        }
+
+        // Check ownership
+        if ($expense->userId !== $userId) {
+            return $response->withStatus(403);
+        }
+
+        try {
+
+            $this->expenseService->delete($expenseId);
+            return $response->withHeader('Location', '/expenses')->withStatus(302);
+        } catch (\Throwable $e) {
+            return $response->withHeader('Location', '/expenses')->withStatus(302);
+        }
     }
+
+
 }
