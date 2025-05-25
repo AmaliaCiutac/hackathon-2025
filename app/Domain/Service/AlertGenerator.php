@@ -20,6 +20,9 @@ class AlertGenerator
         $categoryBudgets = $this->budgetService->getBudgets();
         $totals = $this->expenseRepository->getTotalsByCategory($user->getId(), $year, $month);
 
+        /* var_dump($totals, $categoryBudgets);
+        exit; */
+
         foreach ($categoryBudgets as $category => $budget) {
             $spent = $totals[$category] ?? 0;
             if ($spent > $budget) {

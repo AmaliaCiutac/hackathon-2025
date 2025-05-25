@@ -8,7 +8,7 @@ class BudgetManagementService
 
     public function __construct()
     {
-        $json = getenv('MANAGE_BUDGETS') ?: '{}';
+        $json = $_ENV['MANAGE_BUDGETS'] ?? '{}';
         $this->manageBudget = json_decode($json, true);
     }
 

@@ -24,11 +24,11 @@ class ExpenseServiceTest extends TestCase
 
         $service = new ExpenseService($repo);
         $date = new DateTimeImmutable('2025-01-02');
-        $expense = $service->create($user, 12.3, 'Meat and dairy', $date, 'groceries');
+        $expense = $service->create($user, 12.3, 'Meat and dairy', $date, 'food');
 
         $this->assertSame($date, $expense->date);
         $this->assertSame(1, $expense->userId);
         // TODO: uncomment the following line when finished proper implementation
-        // $this->assertSame(1230, $expense->amountCents);
+         $this->assertSame(1230, $expense->amountCents);
     }
 }
