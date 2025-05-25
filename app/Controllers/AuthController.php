@@ -35,21 +35,17 @@ class AuthController extends BaseController
         $username = trim($userData['username'] ?? '');
         $password = trim($userData['password'] ?? '');
 
-        // Check if the information looks good
         $errors = $this->checkSignupInfo($username, $password);
 
-        // If we found any problems, show them how to fix it
         if (!empty($errors)) {
             $this->logger->warning("Register failed. Try again!");
             return $this->showSignupPage($response, $username, $errors);
         }
 
-        // Try to create their account
         try {
             $this->authService->register($username, $password);
             $this->logger->info("New member joined: Welcome {$username}!");
 
-            // Send them to the login page to try their new account
             return $response->withHeader('Location', '/login')->withStatus(302);
         } catch (\RuntimeException $e) {
             $this->logger->warning("Signup failed for {$username}: " . $e->getMessage());
@@ -88,18 +84,16 @@ class AuthController extends BaseController
 
     public function showLogin(Request $request, Response $response): Response
     {
-        // Just show the friendly login page
+
         return $this->render($response, 'auth/login.twig');
     }
 
     public function login(Request $request, Response $response): Response
     {
-        // Get what the user typed in
         $loginAttempt = $request->getParsedBody() ?? [];
         $username = trim($loginAttempt['username'] ?? '');
         $password = trim($loginAttempt['password'] ?? '');
 
-        // Check if their login information is correct
         if (!$this->authService->attempt($username, $password)) {
             $this->logger->warning("Login failed. Try again");
 
@@ -109,7 +103,6 @@ class AuthController extends BaseController
             ]);
         }
 
-        // Welcome them back!
         $this->logger->info("Welcome back {$username}!");
         return $response->withHeader('Location', '/')->withStatus(302);
     }
@@ -118,16 +111,14 @@ class AuthController extends BaseController
 
     public function logout(Request $request, Response $response): Response
     {
-        // Clear their session and say goodbye
         $this->forgetUserSession();
 
-        // Send them back to the login page
+
         return $response->withHeader('Location', '/login')->withStatus(302);
     }
 
     private function forgetUserSession(): void
     {
-        // Clean up everything about their session
         $_SESSION = [];
         if (session_id()) {
             session_destroy();

@@ -24,11 +24,10 @@ interface ExpenseRepositoryInterface
 
     public function listExpenditureYears(User $user): array;
 
-    public function sumAmountsByCategory(array $criteria): array;
+    public function getTotalForMonth(int $userId, int $year, int $month): float;
 
-    public function averageAmountsByCategory(array $criteria): array;
+    public function getTotalsByCategory(int $userId, int $year, int $month): array;
 
-    public function sumAmounts(array $criteria): float;
-
+    public function getAveragesByCategory(int $userId, int $year, int $month): array;
 
 }

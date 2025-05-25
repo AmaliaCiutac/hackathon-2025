@@ -106,22 +106,50 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
         return array_map(fn($row) => (int)$row['year'], $stmt->fetchAll());
     }
 
-    public function sumAmountsByCategory(array $criteria): array
+    public function getTotalForMonth(int $userId, int $year, int $month): float
     {
-        // TODO: Implement sumAmountsByCategory() method.
-        return [];
+        $sql = 'SELECT SUM(amount_cents) FROM expenses WHERE user_id = :user_id AND strftime(\'%Y\', date) = :year AND strftime(\'%m\', date) = :month';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'user_id' => $userId,
+            'year' => (string)$year,
+            'month' => str_pad((string)$month, 2, '0', STR_PAD_LEFT)
+        ]);
+        return (float)($stmt->fetchColumn() / 100);
     }
 
-    public function averageAmountsByCategory(array $criteria): array
+    public function getTotalsByCategory(int $userId, int $year, int $month): array
     {
-        // TODO: Implement averageAmountsByCategory() method.
-        return [];
+        $sql = 'SELECT category, SUM(amount_cents) as total FROM expenses WHERE user_id = :user_id AND strftime(\'%Y\', date) = :year AND strftime(\'%m\', date) = :month GROUP BY category';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'user_id' => $userId,
+            'year' => (string)$year,
+            'month' => str_pad((string)$month, 2, '0', STR_PAD_LEFT)
+        ]);
+
+        $result = [];
+        while ($row = $stmt->fetch()) {
+            $result[$row['category']] = (float)($row['total'] / 100);
+        }
+        return $result;
     }
 
-    public function sumAmounts(array $criteria): float
+    public function getAveragesByCategory(int $userId, int $year, int $month): array
     {
-        // TODO: Implement sumAmounts() method.
-        return 0;
+        $sql = 'SELECT category, AVG(amount_cents) as average FROM expenses WHERE user_id = :user_id AND strftime(\'%Y\', date) = :year AND strftime(\'%m\', date) = :month GROUP BY category';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'user_id' => $userId,
+            'year' => (string)$year,
+            'month' => str_pad((string)$month, 2, '0', STR_PAD_LEFT)
+        ]);
+
+        $result = [];
+        while ($row = $stmt->fetch()) {
+            $result[$row['category']] = (float)($row['average'] / 100);
+        }
+        return $result;
     }
 
     /**

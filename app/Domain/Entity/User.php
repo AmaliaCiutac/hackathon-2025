@@ -14,4 +14,8 @@ final class User
         public string $passwordHash,
         public DateTimeImmutable $createdAt,
     ) {}
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
 }
