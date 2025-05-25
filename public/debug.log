@@ -1,0 +1,15 @@
+Uploaded files: Array
+(
+    [csv] => Slim\Psr7\UploadedFile Object
+        (
+            [file:protected] => C:\Xampp\tmp\php86BB.tmp
+            [name:protected] => expenses.csv
+            [type:protected] => text/csv
+            [size:protected] => 541
+            [error:protected] => 0
+            [sapi:protected] => 1
+            [stream:protected] => 
+            [moved:protected] => 
+        )
+
+)

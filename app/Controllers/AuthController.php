@@ -30,12 +30,11 @@ class AuthController extends BaseController
 
     public function register(Request $request, Response $response): Response
     {
-        // Get the user's signup information
         $userData = $request->getParsedBody() ?? [];
         $username = trim($userData['username'] ?? '');
         $password = trim($userData['password'] ?? '');
 
-        $errors = $this->checkSignupInfo($username, $password);
+        $errors = $this->checkSignupUsernamePassword($username, $password);
 
         if (!empty($errors)) {
             $this->logger->warning("Register failed. Try again!");
@@ -54,7 +53,7 @@ class AuthController extends BaseController
         }
     }
 
-    private function checkSignupInfo(string $username, string $password): array
+    private function checkSignupUsernamePassword(string $username, string $password): array
     {
         $errors = [];
 
@@ -71,17 +70,11 @@ class AuthController extends BaseController
         return $errors;
     }
 
+    //if the registration doesn't work it re-renders the page
     private function showSignupPage(Response $response, string $username, array $errors): Response
     {
-        return $this->render($response, 'auth/register.twig', [
-            'username' => $username,
-            'errors' => $errors,
-            'general'=> $errors
-        ]);
+        return $this->render($response, 'auth/register.twig', ['username' => $username, 'errors' => $errors, 'general'=> $errors]);
     }
-
-
-
     public function showLogin(Request $request, Response $response): Response
     {
 
@@ -97,32 +90,19 @@ class AuthController extends BaseController
         if (!$this->authService->attempt($username, $password)) {
             $this->logger->warning("Login failed. Try again");
 
-            return $this->render($response, 'auth/login.twig', [
-                'username' => $username,
-                'errors' => ['credentials' => "That didn't work. Check your username and password."]
-            ]);
+            return $this->render($response, 'auth/login.twig', ['username' => $username, 'errors' => ['credentials' => "Login failed. Check your username and password."]]);
         }
-
         $this->logger->info("Welcome back {$username}!");
         return $response->withHeader('Location', '/')->withStatus(302);
     }
-
-
-
     public function logout(Request $request, Response $response): Response
     {
         $this->forgetUserSession();
-
-
         return $response->withHeader('Location', '/login')->withStatus(302);
     }
-
     private function forgetUserSession(): void
     {
         $_SESSION = [];
-        if (session_id()) {
-            session_destroy();
-        }
-    }
+        if (session_id()) {session_destroy();}
+    }}
 
-}

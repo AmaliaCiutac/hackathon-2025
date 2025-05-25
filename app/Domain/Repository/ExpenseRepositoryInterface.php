@@ -18,7 +18,7 @@ interface ExpenseRepositoryInterface
 
     public function find(int $id): ?Expense;
 
-    public function findBy(array $criteria, int $from, int $limit): array;
+    public function findBy(array $criteria, int $from = 0, int $limit = 0): array;
 
     public function countBy(array $criteria): int;
 
@@ -30,4 +30,9 @@ interface ExpenseRepositoryInterface
 
     public function getAveragesByCategory(int $userId, int $year, int $month): array;
 
+    public function beginTransaction(): void;
+
+    public function commit(): void;
+
+    public function rollBack(): void;
 }

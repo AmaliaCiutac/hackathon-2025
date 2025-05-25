@@ -11,25 +11,23 @@ use Slim\Views\Twig;
 
 class ExpenseController extends BaseController
 {
-    private const PAGE_SIZE = 20;
+    private const PAGE_SIZE = 10;
 
     public function __construct(
         Twig $view,
-        private readonly ExpenseService $expenseService,
-    ) {
+        private readonly ExpenseService $expenseService,) {
         parent::__construct($view);
     }
 
     public function index(Request $request, Response $response): Response
     {
-        // Check if user is logged in
         $userId = $this->getLoggedInUserId();
         if (!$userId) {
             return $response->withHeader('Location', '/login')->withStatus(302);
         }
-
+//gets data for the filter and paging
         $query = $request->getQueryParams();
-        $page = max((int)($query['page'] ?? 1), 1);  // Ensure page is at least 1
+        $page = max((int)($query['page'] ?? 1), 1);
         $currentYear = (int)($query['year'] ?? date('Y'));
         $currentMonth = (int)($query['month'] ?? date('n'));
 
@@ -39,12 +37,7 @@ class ExpenseController extends BaseController
         $totalExpenses = $this->expenseService->count($user, $currentYear, $currentMonth);
         $availableYears = $this->expenseService->listYears($user);
 
-        $months = [
-            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
-            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
-            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
-        ];
-
+        $months = [1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April', 5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August', 9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'];
 
         return $this->render($response, 'expenses/index.twig', [
             'expenses' => $expenses,
@@ -64,30 +57,16 @@ class ExpenseController extends BaseController
             return $response->withHeader('Location', '/login')->withStatus(302);
         }
 
-        $categories = [
-            'food',
-            'transport',
-            'housing',
-            'utilities',
-            'entertainment',
-            'other'
-        ];
-        $defaultValues = [
-            'date' => date('Y-m-d'),
-            'category' => '',
-            'amount' => '',
-            'description' => ''
-        ];
+        $categories = ['food', 'transport', 'housing', 'utilities', 'entertainment', 'other'];
+        $defaultValues = ['date' => date('Y-m-d'), 'category' => '', 'amount' => '', 'description' => ''];
 
         $formValues = array_merge($defaultValues, $request->getQueryParams());
 
-        $errors = $request->getQueryParams()['errors'] ?? [];
-
-        return $this->render($response, 'expenses/create.twig', [
-            'categories' => $categories,
-            'values' => $formValues,
-            'errors' => $errors
-        ]);
+        $errors = [];
+        if (isset($request->getQueryParams()['errors'])) {
+            $errors = json_decode($request->getQueryParams()['errors'], true);
+        }
+        return $this->render($response, 'expenses/create.twig', ['categories' => $categories, 'values' => $formValues, 'errors' => $errors]);
     }
 
     public function store(Request $request, Response $response): Response
@@ -95,7 +74,7 @@ class ExpenseController extends BaseController
         if (!$userId = $this->getLoggedInUserId()) {
             return $response->withHeader('Location', '/login')->withStatus(302);
         }
-
+//extracting form data
         $data = $request->getParsedBody() ?? [];
         $date = trim($data['date'] ?? '');
         $category = trim($data['category'] ?? '');
@@ -111,13 +90,7 @@ class ExpenseController extends BaseController
 
         try {
             $user = new \App\Domain\Entity\User($userId, '', '', new \DateTimeImmutable());
-            $this->expenseService->create(
-                $user,
-                (float)$amount,
-                $description,
-                new \DateTimeImmutable($date),
-                $category
-            );
+            $this->expenseService->create($user, (float)$amount, $description, new \DateTimeImmutable($date), $category);
         } catch (\Throwable $e) {
             $errors = ['general' => 'Failed to save expense. Please try again.'];
             return $this->redirectBackWithErrors($response, $date, $category, $amount, $description, $errors);
@@ -133,8 +106,7 @@ class ExpenseController extends BaseController
 
         if (empty($date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             $errors['date'] = 'Invalid date format. Use YYYY-MM-DD.';
-        } elseif (strtotime($date) > time()) {
-            $errors['date'] = 'Date cannot be in the future.';
+        } elseif (strtotime($date) > time()) { $errors['date'] = 'Date cannot be in the future.';
         }
 
         if (empty($category) || !in_array($category, $validCategories, true)) {
@@ -144,10 +116,8 @@ class ExpenseController extends BaseController
         if (!is_numeric($amount) || (float)$amount <= 0) {
             $errors['amount'] = 'Amount must be a positive number.';
         }
-
         if (empty($description)) {
-            $errors['description'] = 'Description cannot be empty.';
-        }
+            $errors['description'] = 'Description cannot be empty.';}
 
         return $errors;
     }
@@ -160,17 +130,10 @@ class ExpenseController extends BaseController
         string $description,
         array $errors
     ): Response {
-        $query = http_build_query([
-            'date' => $date,
-            'category' => $category,
-            'amount' => $amount,
-            'description' => $description,
-            'errors' => json_encode($errors)
-        ]);
+        $query = http_build_query([ 'date' => $date, 'category' => $category, 'amount' => $amount, 'description' => $description, 'errors' => json_encode($errors)]);
 
         return $response
-            ->withHeader('Location', '/expenses/create?' . $query)
-            ->withStatus(302);
+            ->withHeader('Location', '/expenses/create?' . $query)->withStatus(302);
     }
 
     public function edit(Request $request, Response $response, array $routeParams): Response
@@ -180,7 +143,6 @@ class ExpenseController extends BaseController
         if (!$userId) {
             return $response->withHeader('Location', '/login')->withStatus(302);
         }
-
         $expenseId = (int)($routeParams['id'] ?? 0);
         if ($expenseId <= 0) {
             return $response->withStatus(404);
@@ -194,25 +156,13 @@ class ExpenseController extends BaseController
             return $response->withStatus(403);
         }
 
-        $categories = [
-            'food',
-            'transport',
-            'housing',
-            'utilities',
-            'entertainment',
-            'other'
-        ];
+        $categories = ['food', 'transport', 'housing', 'utilities', 'entertainment', 'other'];
 
-        return $this->render($response, 'expenses/edit.twig', [
-            'expense' => $expense,
-            'categories' => $categories,
-            'errors' => $request->getQueryParams()['errors'] ?? []
-        ]);
+        return $this->render($response, 'expenses/edit.twig', ['expense' => $expense, 'categories' => $categories, 'errors' => $request->getQueryParams()['errors'] ?? []]);
     }
 
     public function update(Request $request, Response $response, array $routeParams): Response
     {
-
         $userId = $this->getLoggedInUserId();
         if (!$userId) {
             return $response->withHeader('Location', '/login')->withStatus(302);
@@ -231,30 +181,24 @@ class ExpenseController extends BaseController
         if ($expense->userId !== $userId) {
             return $response->withStatus(403);
         }
-
-
         $data = $request->getParsedBody() ?? [];
         $date = trim($data['date'] ?? '');
         $category = trim($data['category'] ?? '');
         $amount = trim($data['amount'] ?? '');
         $description = trim($data['description'] ?? '');
 
-
         $errors = $this->validateExpenseData($date, $category, $amount, $description);
 
         if (!empty($errors)) {
-            $query = http_build_query([
-                'errors' => json_encode($errors),
+            $query = http_build_query(['errors' => json_encode($errors),
                 'date' => $date,
                 'category' => $category,
                 'amount' => $amount,
                 'description' => $description
             ]);
             return $response
-                ->withHeader('Location', '/expenses/' . $expenseId . '/edit?' . $query)
-                ->withStatus(302);
+                ->withHeader('Location', '/expenses/' . $expenseId . '/edit?' . $query)->withStatus(302);
         }
-
         try {
             $this->expenseService->update(
                 $expense,
@@ -269,8 +213,7 @@ class ExpenseController extends BaseController
             $errors = ['general' => 'Failed to update expense. Please try again.'];
             $query = http_build_query(['errors' => json_encode($errors)]);
             return $response
-                ->withHeader('Location', '/expenses/' . $expenseId . '/edit?' . $query)
-                ->withStatus(302);
+                ->withHeader('Location', '/expenses/' . $expenseId . '/edit?' . $query)->withStatus(302);
         }
     }
 
@@ -292,13 +235,11 @@ class ExpenseController extends BaseController
             return $response->withStatus(404);
         }
 
-        // Check ownership
+        //checks ownership
         if ($expense->userId !== $userId) {
             return $response->withStatus(403);
         }
-
         try {
-
             $this->expenseService->delete($expenseId);
             return $response->withHeader('Location', '/expenses')->withStatus(302);
         } catch (\Throwable $e) {
@@ -306,5 +247,31 @@ class ExpenseController extends BaseController
         }
     }
 
+    public function import(Request $request, Response $response): Response
+    {
+        $userId = $this->getLoggedInUserId();
+        if (!$userId) {
+            return $response->withHeader('Location', '/login')->withStatus(302);
+        }
+
+        if ($request->getMethod() === 'GET') {
+            return $this->render($response, 'expenses/import.twig');
+        }
+        $uploadedFiles = $request->getUploadedFiles();
+        $csvFile = $uploadedFiles['csv_file'] ?? null;
+
+        if (!$csvFile || $csvFile->getError() !== UPLOAD_ERR_OK) {
+            return $response->withHeader('Location', '/expenses')->withStatus(302);
+        }
+
+        $user = new \App\Domain\Entity\User($userId, '', '', new \DateTimeImmutable());
+
+        try {
+            $importedCount = $this->expenseService->importFromCsv($user, $csvFile);
+        } catch (\Exception $e) {
+
+        }
+        return $response->withHeader('Location', '/expenses')->withStatus(302);
+    }
 
 }

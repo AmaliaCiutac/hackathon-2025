@@ -38,8 +38,7 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
         if ($expense->id === null) {
             $sql = 'INSERT INTO expenses (user_id, date, category, amount_cents, description) VALUES (:user_id, :date, :category, :amount_cents, :description)';
             $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([
-                'user_id' => $expense->userId,
+            $stmt->execute(['user_id' => $expense->userId,
                 'date' => $expense->date->format('Y-m-d'),
                 'category' => $expense->category,
                 'amount_cents' => $expense->amountCents,
@@ -49,17 +48,14 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
         } else {
             $sql = 'UPDATE expenses SET user_id=:user_id, date=:date, category=:category, amount_cents=:amount_cents, description=:description WHERE id=:id';
             $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([
-                'id' => $expense->id,
+            $stmt->execute(['id' => $expense->id,
                 'user_id' => $expense->userId,
                 'date' => $expense->date->format('Y-m-d'),
                 'category' => $expense->category,
                 'amount_cents' => $expense->amountCents,
-                'description' => $expense->description,
-            ]);
+                'description' => $expense->description,]);
         }
     }
-
 
     public function delete(int $id): void
     {
@@ -67,17 +63,53 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
         $statement->execute([$id]);
     }
 
-    public function findBy(array $criteria, int $from, int $limit): array
+    public function findBy(array $criteria, int $from = 0, int $limit = 0): array
     {
-        $sql = 'SELECT * FROM expenses WHERE user_id = :user_id AND strftime(\'%Y\', date) = :year AND strftime(\'%m\', date) = :month ORDER BY date DESC LIMIT :limit OFFSET :from';
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':user_id', $criteria['user_id'], PDO::PARAM_INT);
-        $stmt->bindValue(':year', (string)$criteria['year'], PDO::PARAM_STR);
-        $stmt->bindValue(':month', str_pad((string)$criteria['month'], 2, '0', STR_PAD_LEFT), PDO::PARAM_STR);
-        $stmt->bindValue(':from', $from, PDO::PARAM_INT);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->execute();
+        $where = [];
+        $params = [];
 
+        foreach ($criteria as $field => $value) {
+            if ($field === 'date') {
+
+                $where[] = 'date = :date';
+                $params['date'] = $value;
+            } elseif ($field === 'amount_cents') {
+
+                $where[] = 'amount_cents = :amount_cents';
+                $params['amount_cents'] = $value;
+            } elseif ($field === 'year') {
+
+                $where[] = 'strftime(\'%Y\', date) = :year';
+                $params['year'] = (string)$value;
+            } elseif ($field === 'month') {
+                $where[] = 'strftime(\'%m\', date) = :month';
+                $params['month'] = str_pad((string)$value, 2, '0', STR_PAD_LEFT);
+            } else {
+
+                $where[] = "$field = :$field";
+                $params[$field] = $value;
+            }
+        }
+
+        $sql = 'SELECT * FROM expenses';
+        if (!empty($where)) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        $sql .= ' ORDER BY date DESC';
+        if ($limit > 0) {
+            $sql .= ' LIMIT :limit OFFSET :from';
+            $params['limit'] = $limit;
+            $params['from'] = $from;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $paramType = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue(':' . $key, $value, $paramType);
+        }
+
+        $stmt->execute();
         $results = [];
         while ($row = $stmt->fetch()) {
             $results[] = $this->createExpenseFromData($row);
@@ -139,11 +171,9 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
     {
         $sql = 'SELECT category, AVG(amount_cents) as average FROM expenses WHERE user_id = :user_id AND strftime(\'%Y\', date) = :year AND strftime(\'%m\', date) = :month GROUP BY category';
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            'user_id' => $userId,
+        $stmt->execute(['user_id' => $userId,
             'year' => (string)$year,
-            'month' => str_pad((string)$month, 2, '0', STR_PAD_LEFT)
-        ]);
+            'month' => str_pad((string)$month, 2, '0', STR_PAD_LEFT)]);
 
         $result = [];
         while ($row = $stmt->fetch()) {
@@ -151,20 +181,28 @@ class PdoExpenseRepository implements ExpenseRepositoryInterface
         }
         return $result;
     }
-
-    /**
-     * @throws Exception
-     */
+    /*** @throws Exception */
     private function createExpenseFromData(mixed $data): Expense
     {
-        return new Expense(
-            $data['id'],
-            $data['user_id'],
+        return new Expense($data['id'], $data['user_id'],
             new DateTimeImmutable($data['date']),
             $data['category'],
             $data['amount_cents'],
-            $data['description'],
-        );
+            $data['description'],);
     }
 
+    public function beginTransaction(): void
+    {
+        $this->pdo->beginTransaction();
+    }
+
+    public function commit(): void
+    {
+        $this->pdo->commit();
+    }
+
+    public function rollBack(): void
+    {
+        $this->pdo->rollBack();
+    }
 }

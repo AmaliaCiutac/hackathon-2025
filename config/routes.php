@@ -20,6 +20,7 @@ return static function (App $app) {
             $expense->get('', [ExpenseController::class, 'index']);
             $expense->get('/create', [ExpenseController::class, 'create']);
             $expense->post('', [ExpenseController::class, 'store']);
+            $expense->post('/import', [ExpenseController::class, 'import']); // Only defined once
             $expense->get('/{id}/edit', [ExpenseController::class, 'edit']);
             $expense->post('/{id}', [ExpenseController::class, 'update']);
             $expense->post('/{id}/delete', [ExpenseController::class, 'destroy']);
@@ -29,7 +30,6 @@ return static function (App $app) {
             if (!isset($_SESSION['user_id'])) {
                 return (new Response())->withHeader('Location', '/login')->withStatus(302);
             }
-
             return $handler->handle($request);
         });
 };

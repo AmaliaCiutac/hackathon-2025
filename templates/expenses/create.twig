@@ -4,14 +4,22 @@
     <h1 class="text-2xl font-bold mb-4">Add Expense</h1>
     <section class="mb-8">
         <form action="/expenses" method="POST" class="max-w-sm mx-auto">
+            {% if errors.general %}
+                <div class="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+                    {{ errors.general }}
+                </div>
+            {% endif %}
+
             <div class="mb-4 flex items-center">
                 <label for="date" class="w-24 text-gray-300 font-bold">Date:</label>
                 <input type="date" id="date" name="date" value="{{ values.date }}" required
                        class="flex-1 shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-100 leading-tight focus:outline-none focus:shadow-outline">
+                {% if errors.date %}
+                    <span class="ml-2 text-red-500 text-sm">{{ errors.date }}</span>
+                {% endif %}
             </div>
             <div class="mb-4 flex items-center">
                 <label for="category" class="w-24 text-gray-300 font-bold">Category:</label>
-                {# TODO: populate with configured expense categories instead of the mock values #}
                 <select id="category" name="category" required
                         class="flex-1 shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-100 leading-tight focus:outline-none focus:shadow-outline">
                     <option value="">Select a category</option>
@@ -19,17 +27,25 @@
                         <option value="{{ cat }}" {% if values.category == cat %}selected{% endif %}>{{ cat|capitalize }}</option>
                     {% endfor %}
                 </select>
-
+                {% if errors.category %}
+                    <span class="ml-2 text-red-500 text-sm">{{ errors.category }}</span>
+                {% endif %}
             </div>
             <div class="mb-4 flex items-center">
                 <label for="amount" class="w-24 text-gray-300 font-bold">Amount:</label>
                 <input type="number" id="amount" name="amount" step="0.01" value="{{ values.amount }}" required
                        class="flex-1 shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-100 leading-tight focus:outline-none focus:shadow-outline">
+                {% if errors.amount %}
+                    <span class="ml-2 text-red-500 text-sm">{{ errors.amount }}</span>
+                {% endif %}
             </div>
             <div class="mb-6 flex items-start">
                 <label for="description" class="w-24 text-gray-300 font-bold mt-2">Description:</label>
-                <textarea id="description" name="description" rows="2" {{ values.description }}
-                          class="flex-1 shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-100 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                <textarea id="description" name="description" rows="2"
+                          class="flex-1 shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-100 leading-tight focus:outline-none focus:shadow-outline">{{ values.description }}</textarea>
+                {% if errors.description %}
+                    <span class="ml-2 text-red-500 text-sm">{{ errors.description }}</span>
+                {% endif %}
             </div>
             <div class="flex justify-end">
                 <button type="submit"

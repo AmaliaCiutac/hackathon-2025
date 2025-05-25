@@ -1,9 +1,9 @@
-"2025-05-01 18:00:00",100.00,"Weekly food",Groceries
-"2025-05-02 10:00:00",80.00,"Diesel refill",Transport
-"2025-05-03 21:00:00",30.50,"Night out",Entertainment
-"2025-05-03 21:00:00",30.50,"Night out",Entertainment
-"2025-05-03 21:00:00",30.50,"",Entertainment
-"2025-05-03 21:00:00",30.50,"This should be skipped because of unknown category",Abracadabra
-"2025-05-04 12:30:00",55.00,"Paid the gas bill",Utilities
-"2025-05-05 11:00:00",35.25,"Paid the electricity bill",Utilities
-"2025-05-05 19:00:00",20.00,"Pizza and nachos",Groceries
+01/05/2025 18:00,100,Weekly food,food
+02/05/2025 10:00,80,Diesel refill,transport
+03/05/2025 21:00,30.5,Night out,entertainment
+03/05/2025 21:00,30.5,Night out,entertainment
+03/05/2025 21:00,30.5,,entertainment
+03/05/2025 21:00,30.5,This should be skipped because of unknown category,Abracadabra
+04/05/2025 12:30,55,Paid the gas bill,utilities
+05/05/2025 11:00,35.25,Paid the electricity bill,utilities
+05/05/2025 19:00,20,Pizza and nachos,food

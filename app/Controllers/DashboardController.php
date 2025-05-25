@@ -13,13 +13,12 @@ use App\Domain\Entity\User;
 
 class DashboardController extends BaseController
 {
+    //dependencies
     public function __construct(
         Twig $view,
         private ExpenseRepositoryInterface $expenseRepo,
-        private AlertGenerator $alertGenerator
-    ) {
-        parent::__construct($view);
-    }
+        private AlertGenerator $alertGenerator) {
+        parent::__construct($view);}
 
     public function index(Request $request, Response $response): Response
     {
@@ -28,6 +27,7 @@ class DashboardController extends BaseController
             return $response->withHeader('Location', '/login')->withStatus(302);
         }
 
+        //URL for the filter
         $params = $request->getQueryParams();
         $currentYear = (int)date('Y');
         $currentMonth = (int)date('n');
@@ -37,10 +37,9 @@ class DashboardController extends BaseController
 
         $user = new User($userId, '', '', new \DateTimeImmutable());
 
+        //gets only the available years
         $years = $this->expenseRepo->listExpenditureYears($user);
-        $alerts = ($year === $currentYear && $month === $currentMonth)
-            ? $this->alertGenerator->generate($user, $year, $month)
-            : [];
+        $alerts = ($year === $currentYear && $month === $currentMonth) ? $this->alertGenerator->generate($user, $year, $month) : [];
 
         $total = $this->expenseRepo->getTotalForMonth($userId, $year, $month);
         $totalsRaw = $this->expenseRepo->getTotalsByCategory($userId, $year, $month);
@@ -51,22 +50,17 @@ class DashboardController extends BaseController
 
         $totalsPerCategory = [];
         foreach ($totalsRaw as $category => $amount) {
-            $totalsPerCategory[$category] = [
-                'value' => $amount,
-                'percentage' => $totalsSum > 0 ? round(($amount / $totalsSum) * 100, 2) : 0
+            $totalsPerCategory[$category] = ['value' => $amount, 'percentage' => $totalsSum > 0 ? round(($amount / $totalsSum) * 100, 2) : 0
             ];
         }
 
         $averagesPerCategory = [];
         foreach ($averagesRaw as $category => $amount) {
-            $averagesPerCategory[$category] = [
-                'value' => $amount,
-                'percentage' => $averagesSum > 0 ? round(($amount / $averagesSum) * 100, 2) : 0
+            $averagesPerCategory[$category] = ['value' => $amount, 'percentage' => $averagesSum > 0 ? round(($amount / $averagesSum) * 100, 2) : 0
             ];
         }
 
-        return $this->render($response, 'dashboard.twig', [
-            'alerts' => $alerts,
+        return $this->render($response, 'dashboard.twig', ['alerts' => $alerts,
             'totalForMonth' => ['value' => $total, 'month' => $month, 'year' => $year],
             'totalsForCategories' => $totalsPerCategory,
             'averagesForCategories' => $averagesPerCategory,

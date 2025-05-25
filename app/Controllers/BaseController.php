@@ -13,11 +13,13 @@ abstract class BaseController
         protected Twig $view,
     ) {}
 
+    //renders a twig page
     protected function render(Response $response, string $template, array $data = []): Response
     {
         return $this->view->render($response, $template, $data);
     }
 
+    //gets the user id from the current session
     protected function getLoggedInUserId(): ?int
     {
         return $_SESSION['user_id'] ?? null;
