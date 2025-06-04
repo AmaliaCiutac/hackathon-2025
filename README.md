@@ -104,10 +104,54 @@ A solution with passing analysis and unit tests will receive extra points.
 ## Delivery details
 
 Participant:
-- Full name: ...
-- Email address: ...
+- Full name: Ciutac Amalia-Andreea
+- Email address: ciutacamalia26@gmail.com
+
 
 Features fully implemented:
 - ...
+- **Register**
+  - Users can sign up through a secure form
+  - Form has validation:
+    - Username needs to be at least 4 characters
+    - Password must have at least 8 characters and one number
+    - You also need to confirm your password to avoid typos
+  - Passwords are hashed using `password_hash()` before storing
+  - After registering, users get redirected to the login page
 
-Other instructions about setting up the application (if any): ...
+- **Login**
+  - Users log in with their saved credentials
+  - Invalid credentials are rejected
+  - If login is successful, a session is started
+  - Then the user is redirected to the dashboard
+
+- **Logout**
+  - Ends the session and redirects back to login
+
+- **Expense Management (CRUD)**
+
+  - **List Expenses**
+    - Shows a list of all expenses for the selected month and year
+    - Pagination included (20 per page)
+    - Sorted from newest to oldest
+    - Each expense shows its description, amount, and category
+    - Each entry also has edit and delete options
+
+  - **Create Expense**
+    - Users can add a new expense with description, date, category, and amount (> 0)
+    - Form has validation, and it keeps the input if there are errors
+    - After a successful save, it redirects back to the expense list
+
+  - **Edit Expense**
+    - Opens a form filled with the selected expense's info
+    - Same validation rules as in the creation form
+    - Only the person who created the expense can edit it
+
+  - **Delete Expense**
+    - Deletes the selected expense and redirects back to the list
+    - Only the person who created the expense can delete it
+
+- **Dashboard**
+  - Shows total spending for the current month
+  - Also breaks down expenses by category
+  - If a category goes over budget, a warning is shown
